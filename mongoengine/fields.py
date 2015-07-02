@@ -1016,7 +1016,19 @@ class CachedReferenceField(BaseField):
                                   sender=self.document_type)
 
     def on_document_pre_save(self, sender, document, created, **kwargs):
-        if not created:
+        if hasattr(self, 'parent_field') and not created:
+            update_kwargs = dict(
+                ('set__%s__$__%s' % (self.parent_field.name, k), v)
+                for k, v in document._delta()[0].items())
+            
+            if update_kwargs:
+                filter_kwargs = {}
+                filter_kwargs[self.parent_field.name + '__id'] = document.id
+                
+                self.parent_field.owner_document.objects(
+                    **filter_kwargs).update(**update_kwargs)
+            
+        elif not created:
             update_kwargs = dict(
                 ('set__%s__%s' % (self.name, k), v)
                 for k, v in document._delta()[0].items()
@@ -1028,6 +1040,7 @@ class CachedReferenceField(BaseField):
 
                 self.owner_document.objects(
                     **filter_kwargs).update(**update_kwargs)
+
 
     def to_python(self, value):
         if isinstance(value, dict):

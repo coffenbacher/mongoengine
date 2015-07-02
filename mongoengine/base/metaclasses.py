@@ -201,6 +201,9 @@ class DocumentMetaclass(type):
                     raise InvalidDocumentError(msg)
 
                 f = field.field
+                if isinstance(f, CachedReferenceField) and f.auto_sync:
+                    f.parent_field = field
+                    f.start_listener()
 
             if delete_rule != DO_NOTHING:
                 if issubclass(new_class, EmbeddedDocument):
